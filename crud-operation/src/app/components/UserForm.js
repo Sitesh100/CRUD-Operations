@@ -4,6 +4,15 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createUser, updateUser } from "@/lib/api";
 import { X, Save, User } from "lucide-react";
+import { z } from "zod";
+
+// Define a schema for your form validation
+const userSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["User", "Admin"])
+});
 
 const UserForm = ({ user, onClose }) => {
   const queryClient = useQueryClient();
@@ -40,25 +49,21 @@ const UserForm = ({ user, onClose }) => {
     },
   });
 
+  // Zod validation function
   const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.first_name.trim()) {
-      newErrors.first_name = "First name is required";
+    try {
+      userSchema.parse(formData);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors = {};
+        error.errors.forEach(err => {
+          newErrors[err.path[0]] = err.message;
+        });
+        setErrors(newErrors);
+      }
+      return false;
     }
-    
-    if (!formData.last_name.trim()) {
-      newErrors.last_name = "Last name is required";
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
