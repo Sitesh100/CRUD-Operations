@@ -70,7 +70,7 @@ const UsersTable = () => {
         <h1 className="text-2xl font-bold text-gray-800">Users Management</h1>
         <button
           onClick={handleAddUser}
-          className="flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-500 hover:bg-gray-700 cursor-pointer text-white px-4 py-2 rounded-md transition-colors"
+          className="flex items-center text-black gap-2 bg-linear-to-r from-sky-300 to-indigo-300 hover:bg-gray-700 cursor-pointer px-4 py-2 rounded-md transition-colors"
         >
           <UserPlus size={18} />
           <span>Add User</span>

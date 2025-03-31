@@ -36,16 +36,61 @@ const UserForm = ({ user, onClose }) => {
     }
   }, [user]);
 
-  // Create or Update Mutation
-  const mutation = useMutation({
-    mutationFn: () =>
-      user?.id ? updateUser({ ...user, ...formData }) : createUser(formData),
+  // Create Mutation
+  const createMutation = useMutation({
+    mutationFn: createUser,
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Get the current page
+      const currentPage = queryClient.getQueryData(["users", 1]);
+      
+      if (currentPage && currentPage.data) {
+        // Update the cache directly with the new user
+        queryClient.setQueryData(["users", 1], {
+          ...currentPage,
+          data: [response, ...currentPage.data]
+        });
+      } else {
+        // Invalidate to refetch if we can't update the cache directly
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+      }
+      
       onClose();
     },
     onError: (error) => {
-      setErrors({ form: error.message || "An error occurred" });
+      setErrors({ form: error.message || "Error creating user" });
+    },
+  });
+
+  // Update Mutation
+  const updateMutation = useMutation({
+    mutationFn: (userData) => updateUser(userData),
+    onSuccess: (response, userData) => {
+      // Find the page that has the updated user
+      const pages = queryClient.getQueriesData({ queryKey: ["users"] });
+      
+      for (const [queryKey, pageData] of pages) {
+        if (pageData && pageData.data) {
+          // Find if this page has the user
+          const userIndex = pageData.data.findIndex(u => u.id === userData.id);
+          
+          if (userIndex !== -1) {
+            // Update the user in the cache
+            const newData = [...pageData.data];
+            newData[userIndex] = { ...newData[userIndex], ...userData };
+            
+            queryClient.setQueryData(queryKey, {
+              ...pageData,
+              data: newData
+            });
+            break;
+          }
+        }
+      }
+      
+      onClose();
+    },
+    onError: (error) => {
+      setErrors({ form: error.message || "Error updating user" });
     },
   });
 
@@ -68,8 +113,14 @@ const UserForm = ({ user, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      mutation.mutate();
+    if (!validateForm()) return;
+    
+    if (user?.id) {
+      // Update existing user
+      updateMutation.mutate({ ...user, ...formData });
+    } else {
+      // Create new user
+      createMutation.mutate(formData);
     }
   };
 
@@ -80,6 +131,9 @@ const UserForm = ({ user, onClose }) => {
       setErrors({ ...errors, [field]: undefined });
     }
   };
+
+  // Determine if we're currently in a loading state
+  const isLoading = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
@@ -184,10 +238,10 @@ const UserForm = ({ user, onClose }) => {
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={isLoading}
               className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {mutation.isPending ? (
+              {isLoading ? (
                 <span className="inline-flex items-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
