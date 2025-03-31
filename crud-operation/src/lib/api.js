@@ -5,7 +5,7 @@ const API_URL = "https://reqres.in/api/users";
 // Fetch users 
 export const fetchUsers = async (page, searchParams = {}) => {
   try {
-    const response = await axios.get(`${API_URL}?page=${page}`);
+    const response = await axios.get(`${API_URL}?page=${page}&per_page=5`);
     if (!response.data || !response.data.data) {
       throw new Error("No data found");
     }
